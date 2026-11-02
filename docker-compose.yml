@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: riverbend
+      POSTGRES_PASSWORD: riverbend
+      POSTGRES_DB: riverbend
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U riverbend -d riverbend"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # One-shot: create the app role, tables, RLS policies, and seed shops. Exits 0.
+  migrate:
+    build: .
+    command: python -m scripts.init_db
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://riverbend_app:riverbend_app@db:5432/riverbend
+      ADMIN_DATABASE_URL: postgresql+psycopg://riverbend:riverbend@db:5432/riverbend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://riverbend_app:riverbend_app@db:5432/riverbend
+      ADMIN_DATABASE_URL: postgresql+psycopg://riverbend:riverbend@db:5432/riverbend
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    command: python -m app.worker
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://riverbend_app:riverbend_app@db:5432/riverbend
+      ADMIN_DATABASE_URL: postgresql+psycopg://riverbend:riverbend@db:5432/riverbend
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

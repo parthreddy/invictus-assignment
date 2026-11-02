@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+markers = [
+    "tenancy: tests that require a running Postgres (docker-compose up)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
