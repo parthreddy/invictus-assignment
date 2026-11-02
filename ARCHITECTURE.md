@@ -99,15 +99,4 @@ IaC sketch in [`infra/`](infra/) (Terraform). Services and why:
 The `queue` interface is the only swap point: outbox-poll locally → Cloud Tasks
 push in prod.
 
-## Three decisions I'd most want challenged
 
-1. **Trust the `shop_id` tag over message content for routing** (sample m-1009 says
-   "Hi Lakeshore team!" but is tagged Downtown). I treat the tag as the tenant
-   boundary and only *flag* the mismatch (`wrong_shop_suspected`) rather than
-   reroute — rerouting would cross a tenant boundary on the model's say-so.
-2. **DB-outbox instead of a real broker locally.** Simpler, survives restart, and
-   keeps the idempotency story visible in SQL — but it's poll-based and I lean on
-   per-shop polling, which is the first thing I'd replace at scale (see NOT_BUILT).
-3. **Spend cap checked against already-accumulated spend** (pre-check, not
-   reservation). The call that crosses the cap still runs — overshoot bounded by one
-   call. Simpler than reserving an estimate; acceptable for a soft cost guardrail.

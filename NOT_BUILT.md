@@ -38,15 +38,4 @@
 5. **Golden-set eval** for extraction quality (precision/recall on the catalog
    mapping), run in CI against a frozen sample set.
 
-## What breaks first at 100 shops
 
-- **Per-shop polling.** The worker loops over shops; at 100 that's wasteful and
-  latency grows. Fix: push-based Cloud Tasks (per-shop queues give natural isolation
-  and rate-limiting), so work is dispatched, not polled.
-- **One shared Postgres / one `app.shop_id` model** still holds at 100 shops, but
-  noisy-neighbour and connection limits appear — add per-tenant rate limits and
-  pooling (PgBouncer), and revisit schema-per-tenant only if isolation needs harden.
-- **Spend accounting contention** if many workers process one shop concurrently —
-  move from pre-check to an atomic reservation on the ledger row.
-- **Catalog assumed global.** At 100 shops, pricing likely diverges per shop/region;
-  the catalog becomes per-tenant and versioned.
